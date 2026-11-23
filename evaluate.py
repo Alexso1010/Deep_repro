@@ -29,7 +29,7 @@ def main(cfg: DictConfig):
     # Once everything is working consistently locally,
     # Uncomment this line to set the MLflow tracking to the global performance
     # dashboard and compete with your peers !
-    # mlflow.set_tracking_uri("http://172.19.1.76:4201")
+    # mlflow.set_tracking_uri("https://mlflow-iodaa.allynd.re/")
 
     with tempfile.TemporaryDirectory() as tmp:
         # Recover config and best checkpoint from the run
