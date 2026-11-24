@@ -85,6 +85,8 @@ def train(
     best_accuracy = 0.0
 
     for epoch in range(epochs):
+        if epoch%5==0:
+            print(epoch)
         model.train()
         running_loss = 0.0
         for X_batch, y_batch in data_object.train_dl:
@@ -116,15 +118,18 @@ def train(
             best_accuracy = accuracy
             best_path = os.path.join(checkpoint_dir, "best_checkpoint.pt")
             torch.save(model.state_dict(), best_path)
-            ##TODO 3##
+            mlflow.log_metric("train/accuracy", float(best_accuracy))
+            mlflow.log_artifact(best_path,"checkpoints")
             # log the best checkpoint as an artifact into the "checkpoints" artifact folder to MLflow
+
 
         if (epoch + 1) % 2 == 0:
             periodic_path = os.path.join(checkpoint_dir, f"epoch_{epoch + 1}.pt")
             torch.save(model.state_dict(), periodic_path)
-            ##TODO 4##
+            mlflow.log_metric("train/accuracy", float(accuracy))
+            mlflow.log_artifact(periodic_path,"checkpoints")
             # log the periodic checkpoint as an artifact into the "checkpoints" artifact folder to MLflow
-
+    print(best_accuracy)
     return best_accuracy
 
 
@@ -133,9 +138,9 @@ def train(
 ###############################################################################
 
 
-##TODO 2##
+
 # complete the parameters of the hydra decorator following the project structure
-@hydra.main(version_base="1.3")
+@hydra.main(config_path="conf", config_name="config", version_base="1.3")
 def main(cfg: DictConfig):
     device = torch.device("cpu")
     print(f"Using device: {device}")
@@ -143,8 +148,9 @@ def main(cfg: DictConfig):
 
     os.makedirs(cfg.checkpoints_dir + cfg.exp_name, exist_ok=True)
 
-    ##TODO 5##
+    
     # Instantiate the data object from the hydra config
+    data_object = DataObject(cfg.data.data_path)
     data_object.make_datasets()
     data_object.make_dataloaders()
 
@@ -158,14 +164,22 @@ def main(cfg: DictConfig):
     # dashboard and compete with your peers !
     # mlflow.set_tracking_uri("https://mlflow-iodaa.allynd.re/")
 
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+
     mlflow.set_experiment(cfg.exp_name)
     with mlflow.start_run():
         mlflow.set_tag("exp_name", cfg.exp_name)
         # Log config as an artifact
         mlflow.log_text(OmegaConf.to_yaml(cfg), "config_exp.yaml")
 
-        ##TODO 6##
+        
         # Log the training parameters and model hyperparameters to MLflow
+
+        for key, value in cfg.training.items():
+            mlflow.log_param(key, value)
+
+        for key, value in cfg.model.items():
+            mlflow.log_param(key, value)
 
         best_val_accuracy = train(
             model,

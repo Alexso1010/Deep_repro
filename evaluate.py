@@ -18,9 +18,9 @@ from sklearn.metrics import classification_report, confusion_matrix
 from dataops.dataobject import DataObject
 
 
-##TODO 7##
+
 # complete the parameters of the hydra decorator following the project structure
-@hydra.main(version_base="1.3")
+@hydra.main(config_path="conf", config_name="config", version_base="1.3")
 def main(cfg: DictConfig):
     device = torch.device("cpu")
     print(f"Using device: {device}")
@@ -31,6 +31,8 @@ def main(cfg: DictConfig):
     # dashboard and compete with your peers !
     # mlflow.set_tracking_uri("https://mlflow-iodaa.allynd.re/")
 
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+
     with tempfile.TemporaryDirectory() as tmp:
         # Recover config and best checkpoint from the run
 
@@ -38,17 +40,17 @@ def main(cfg: DictConfig):
         # Complete the artifacts_uri for the config file and the best set of parameters
         exp_cfg = OmegaConf.load(
             download_artifacts(
-                artifact_uri=f"runs:/{cfg.run_id}/<complete here>",
+                artifact_uri=f"runs:/{cfg.run_id}/config_exp.yaml",
                 dst_path=tmp,
             )
         )
         ckpt_path = download_artifacts(
-            artifact_uri=f"runs:/{cfg.run_id}/checkpoints/<complete here>",
+            artifact_uri=f"runs:/{cfg.run_id}/checkpoints/best_checkpoint.pt",
             dst_path=tmp,
         )
 
         ##TODO 9##
-        # Instantiate the data object from the hydra config
+        data_object = DataObject(cfg.data.data_path)
         data_object.make_datasets()
         data_object.make_dataloaders()
 
@@ -129,6 +131,7 @@ def main(cfg: DictConfig):
 
             ##TODO 10##
             # log the confusion matrix as an artifact to MLflow
+            mlflow.log_figure(fig, "confusion_matrix.png")
 
             plt.close(fig)
 
