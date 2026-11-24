@@ -33,11 +33,6 @@ HORIZON = 96
 ###############################################################################
 
 
-def _sha256(path: str) -> str:
-    with open(path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
-
-
 def _split_sha256(dataset: WindowDataset, context: int = 0) -> str:
     """
     SHA-256 of the series a split is windowed over, without the `context` steps borrowed
