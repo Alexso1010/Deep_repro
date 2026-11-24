@@ -4,9 +4,7 @@ defaults:
   - training: competition_training
   - _self_
 
-# Your name on the leaderboard (required): uv run train_competition.py participant=<your_name>
+# Your name on the leaderboard
 participant: ???
 seed: 42
 checkpoints_dir: checkpoints/competition/
-# null keeps the local tracking, set it to the shared dashboard to compete with your peers
-tracking_uri: null

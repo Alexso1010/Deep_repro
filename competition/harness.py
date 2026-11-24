@@ -20,7 +20,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from torch import nn
 
-from dataops.dataobject import TSDataObject
+from dataops.dataobject import TSDataObject, WindowDataset
 
 EXPERIMENT_NAME = "etth1_competition"
 DATA_PATH = "data/etth1.pkl"
@@ -36,6 +36,18 @@ HORIZON = 96
 def _sha256(path: str) -> str:
     with open(path, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
+
+
+def _split_sha256(dataset: WindowDataset, context: int = 0) -> str:
+    """
+    SHA-256 of the series a split is windowed over, without the `context` steps borrowed
+    from the previous split: the hash depends on the data only, not on the lookback.
+    """
+    series = np.ascontiguousarray(dataset.series[context:].numpy())
+    h = hashlib.sha256()
+    h.update(f"{series.dtype}{series.shape}".encode())
+    h.update(series.tobytes())
+    return h.hexdigest()
 
 
 def _flatten(d: dict, prefix: str = "") -> dict:
@@ -179,7 +191,9 @@ def train(
 
 
 def run_competition(cfg: DictConfig) -> float:
-    """Train the configured model, evaluate its best checkpoint on the test set and log everything."""
+    """
+    Train the configured model, evaluate its best checkpoint on the test set and log everything.
+    """
     if OmegaConf.is_missing(cfg, "participant"):
         raise ValueError("Set your leaderboard name: uv run train_competition.py participant=<your_name>")
     torch.manual_seed(cfg.seed)
@@ -209,9 +223,9 @@ def run_competition(cfg: DictConfig) -> float:
             {
                 "participant": cfg.participant,
                 "model_class": type(model).__name__,
-                "integrity/harness_sha256": _sha256(os.path.abspath(__file__)),
-                "integrity/dataobject_sha256": _sha256(cast(str, inspect.getsourcefile(TSDataObject))),
-                "integrity/data_sha256": _sha256(DATA_PATH),
+                "integrity/train_split": _split_sha256(data_object.train_ds),
+                "integrity/val_split": _split_sha256(data_object.val_ds, context=data_object.lookback),
+                "integrity/test_split": _split_sha256(data_object.test_ds, context=data_object.lookback),
             }
         )
         mlflow.log_params(_flatten(cast(dict, OmegaConf.to_container(cfg, resolve=True))))
