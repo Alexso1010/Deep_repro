@@ -1,0 +1,2 @@
+# Hours of history given to the model. The horizon (96) and the target (OT) are fixed.
+lookback: 336

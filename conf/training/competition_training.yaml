@@ -1,0 +1,16 @@
+batch_size: 64
+epochs: 30
+# Stop when the validation MSE has not improved for `patience` epochs
+patience: 5
+grad_clip: null
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+
+# Training loss only: the leaderboard metrics are always the MSE / MAE computed by the harness
+criterion:
+  _target_: torch.nn.MSELoss
+
+# e.g. {_target_: torch.optim.lr_scheduler.CosineAnnealingLR, T_max: 30}, stepped once per epoch
+scheduler: null

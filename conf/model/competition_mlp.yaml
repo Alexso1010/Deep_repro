@@ -1,0 +1,10 @@
+hyperparameters:
+  hidden_dim: 256
+  n_layers: 2
+  dropout: 0.2
+
+model:
+  _target_: train_competition.TSMLP
+  hidden_dim: ${model.hyperparameters.hidden_dim}
+  n_layers: ${model.hyperparameters.n_layers}
+  dropout: ${model.hyperparameters.dropout}

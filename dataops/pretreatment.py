@@ -5,11 +5,14 @@ As fetch_openml is an experimental feature, it can yield to some network errors.
 In that case, you can manually download the dataset from https://www.openml.org/search?type=data&status=active&id=554&sort=runs and put it in the data/ directory
 """
 
-from urllib.request import urlretrieve
+import argparse
 import os
 import pickle
-import numpy as np
+from urllib.request import urlretrieve
+
 import arff
+import numpy as np
+import pandas as pd
 
 
 def fetch_mnist_from_openml():
@@ -70,8 +73,65 @@ def preprocess_mnist_data():
         pickle.dump(mnist_28_28, f)
 
 
-if __name__ == "__main__":
+def fetch_ett_from_github():
     os.makedirs("data", exist_ok=True)
-    if not os.path.exists("data/fmnist_784.arff"):
-        fetch_mnist_from_openml()
-    preprocess_mnist_data()
+    urlretrieve(
+        # Repo with the data in: https://github.com/zhouhaoyi/ETDataset/tree/main
+        url="https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv",
+        filename="data/ETTh1.csv",
+    )
+
+
+def preprocess_ett_data():
+    df = pd.read_csv("data/ETTh1.csv")
+    columns = [c for c in df.columns if c != "date"]
+    data = df[columns].to_numpy(dtype=np.float32)
+    dates = df["date"].to_numpy()
+    print(f"data: {data.shape}, columns: {columns}")
+    # Standard ETTh1 12 / 4 / 4 months of hourly data.
+    # The splits are chronological and non-overlapping: windowing is left to the data object.
+    n_train, n_val, n_test = 12 * 30 * 24, 4 * 30 * 24, 4 * 30 * 24
+    train = data[:n_train]
+    val = data[n_train : n_train + n_val]
+    test = data[n_train + n_val : n_train + n_val + n_test]
+    # Standardize with training statistics only, to avoid leaking the val/test distribution.
+    mean = train.mean(axis=0)
+    std = train.std(axis=0)
+    train, val, test = (train - mean) / std, (val - mean) / std, (test - mean) / std
+    print("Saving ETTh1 dataset")
+    print(f"train: {train.shape}, val: {val.shape}, test: {test.shape}")
+    print(f"train: {dates[0]} -> {dates[n_train - 1]}")
+    print(f"val:   {dates[n_train]} -> {dates[n_train + n_val - 1]}")
+    print(f"test:  {dates[n_train + n_val]} -> {dates[n_train + n_val + n_test - 1]}")
+    # Save the preprocessed data as a pickle file.
+    ett = {
+        "train": train,
+        "val": val,
+        "test": test,
+        "columns": columns,
+        "target_idx": columns.index("OT"),
+        "mean": mean,
+        "std": std,
+    }
+    with open("data/etth1.pkl", "wb") as f:
+        pickle.dump(ett, f)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="Download_n_pretreat",
+        description="A program launching a routine that use helper functions for downloading and pretreating datasets",
+    )
+    parser.add_argument("datasetname", nargs="?", default="fmnist", choices=["fmnist", "etth1"])
+    args = parser.parse_args()
+
+    os.makedirs("data", exist_ok=True)
+    if args.datasetname == "etth1":
+        if not os.path.exists("data/ETTh1.csv"):
+            fetch_ett_from_github()
+        preprocess_ett_data()
+    else:
+        if not os.path.exists("data/fmnist_784.arff"):
+            fetch_mnist_from_openml()
+        preprocess_mnist_data()
+

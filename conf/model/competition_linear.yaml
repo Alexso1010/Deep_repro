@@ -1,0 +1,4 @@
+hyperparameters: {}
+
+model:
+  _target_: train_competition.LinearForecaster
